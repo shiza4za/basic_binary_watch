@@ -412,9 +412,9 @@ void loop() {
   //  19- 0 赤
   int battery_level = M5.Power.getBatteryLevel();
   M5.Lcd.setCursor(0, 16*14);
-  if      (battery_level <= 100 && battery_level > 60) { M5.Lcd.setTextColor(color_bt_good, color_lcd); }
-  else if (battery_level <=  60 && battery_level > 20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
-  else if (battery_level <=  20 && battery_level >  0) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
+  if      (battery_level <= 100 && battery_level >  60) { M5.Lcd.setTextColor(color_bt_good, color_lcd); }
+  else if (battery_level <=  60 && battery_level >  20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
+  else if (battery_level <=  20                       ) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
   M5.Display.printf("%03d", battery_level);
   M5.Lcd.setTextColor(color_text, color_lcd);
 }
