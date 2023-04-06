@@ -1,5 +1,5 @@
 // basic_binary_watch.ino
-// version 0.1.0 | MIT License | https://github.com/shiza4za/basic_binary_watch/blob/main/LICENSE
+// version 0.1.1 | MIT License | https://github.com/shiza4za/basic_binary_watch/blob/main/LICENSE
 
 #include <iostream>
 #include <bitset>
@@ -413,8 +413,8 @@ void loop() {
   int battery_level = M5.Power.getBatteryLevel();
   M5.Lcd.setCursor(0, 16*14);
   if      (battery_level <= 100 && battery_level > 60) { M5.Lcd.setTextColor(color_bt_good, color_lcd); }
-  else if (battery_level <=  59 && battery_level > 20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
-  else if (battery_level <=  19 && battery_level >  0) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
+  else if (battery_level <=  60 && battery_level > 20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
+  else if (battery_level <=  20 && battery_level >  0) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
   M5.Display.printf("%03d", battery_level);
   M5.Lcd.setTextColor(color_text, color_lcd);
 }
