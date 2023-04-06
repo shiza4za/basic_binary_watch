@@ -43,7 +43,7 @@ BtnC           | 500ms長押し | 終了
 
 ## Customize
 
-`m5binarywatch.ino` の14〜52行内にて設定可能です。
+`basic_binary_watch.ino` の14〜52行内にて設定可能です。
 
 
 - NTP同期時に接続するWi-FiのSSID
