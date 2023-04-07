@@ -1,5 +1,5 @@
 // basic_binary_watch.ino
-// version 0.1.1 | MIT License | https://github.com/shiza4za/basic_binary_watch/blob/main/LICENSE
+// version 0.2.0 | MIT License | https://github.com/shiza4za/basic_binary_watch/blob/main/LICENSE
 
 #include <iostream>
 #include <bitset>
@@ -15,28 +15,34 @@
 //////////////////////////// カスタマイズ ////////////////////////////
 
 // ★NTP同期時に接続するWi-FiのSSID
-constexpr const char* ssid = "your SSID";
+constexpr const char* ssid    = "your SSID";
 // ★NTP同期時に接続するWi-Fiのpw
 constexpr const char* ssid_pw = "your SSID password";
 
+// ★LCD輝度(0〜255で設定可)
+const int brightness      = 85;       // デフォルト 85
+
 // ★デフォルトでデシマルを表示する/しない設定
-bool BtnB_ck = false;   // デフォルト false
+bool      BtnB_dec_ck     = false;    // デフォルト false
 
 // ★背景色
-const int color_lcd  = BLACK;   // デフォルト BLACK
+const int color_lcd       = BLACK;    // デフォルト BLACK
 // ★文字色(バッテリ以外)
-const int color_text = WHITE;   // デフォルト WHITE
+const int color_text      = WHITE;    // デフォルト WHITE
 // ★バイナリ表示のフチの色
-const int color_back = 0x31a6;  // デフォルト 0x31a6
+const int color_back      = 0x31a6;   // デフォルト 0x31a6
 // ★バイナリ表示オフの色
-const int color_off  = 0x31a6;  // デフォルト 0x31a6
+const int color_off       = 0x31a6;   // デフォルト 0x31a6
 // ★バイナリ表示オンの色
-const int color_on   = WHITE;   // デフォルト WHITE
+const int color_on        = WHITE;    // デフォルト WHITE
 
 // ★バッテリ表示の各文字色
 const int color_bt_good   = 0x0723;   // 100-60 デフォルト緑 0x0723
 const int color_bt_hmm    = 0xfd66;   //  59-20 デフォルト黄 0xfd66
-const int color_bt_danger = 0xfa86;   //  19- 0 デフォルト赤 0xfa86
+const int color_bt_danger = 0xfa86;   //  19- 0 デフォルト赤 0xf982
+
+// ★BtnBでLCD輝度MAXにしたときの"BRT"の色
+const int color_brt       = 0xfd66;   // デフォルト黄 0xfd66
 
 // ★自動終了するまでの時間(秒)
 // 　※ミリ秒ではなく秒です
@@ -50,6 +56,9 @@ const int color_bt_danger = 0xfa86;   //  19- 0 デフォルト赤 0xfa86
 // 　・falseでdeepSleep関数実行。次回画面など触れると再起動
 bool poweroffmode = true;   // デフォルト true
 
+// ★稼働中のディレイ(ms)
+const int delay_in_loop = 10;   // デフォルト 10
+
 /////////////////////////////////////////////////////////////////////
 
 
@@ -62,6 +71,7 @@ auto start_time_local = localtime(&start_time);
 int start_time_local_sec = start_time_local->tm_sec;
 const int defy = 20;
 const char* const week_str[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
+bool BtnB_lcd_ck = false;
 
 
 
@@ -110,12 +120,14 @@ void firstScreen() {
     }
   }
 
-  // ボタン説明
+  // NTP・Shutdown文字
   M5.Display.setTextSize(2);
+  M5.Lcd.setTextColor(color_text, color_lcd);
   M5.Display.setCursor(55, 16*14);
-  M5.Display.printf    ("NTP  BIN/DEC  Shutdown");
-  //      Battery-> |100                       |
-  //       Button-> |x xAA x x x BBx x x xCC x |
+  M5.Display.printf("NTP");
+  M5.Lcd.setTextColor(color_text, color_lcd);
+  M5.Display.setCursor(223, 16*14);
+  M5.Display.printf("Shutdown");
 }
 
 
@@ -129,7 +141,7 @@ void connect() {
 
   // バージョン
   M5.Lcd.setTextColor(0xad55, color_lcd);
-  M5.Display.printf("\nver 0.1.0\n\n");
+  M5.Display.printf("\nversion 0.2.0\n\n");
 
   // SSIDの参考表示
   M5.Lcd.setTextColor(color_text, color_lcd);
@@ -174,7 +186,9 @@ void connect() {
   time_t jst = mktime(local_time);
   tm* jstTime = gmtime(&jst);
   M5.Rtc.setDateTime(gmtime(&jst));
-  vTaskDelay(1000);
+  vTaskDelay(500);
+  WiFi.disconnect();
+  vTaskDelay(500);
 
   firstScreen();
 }
@@ -207,6 +221,7 @@ void setup() {
 
   M5.begin(cfg);
   M5.Displays(0).setTextSize(2);
+  M5.Lcd.setBrightness(brightness);
 
   firstScreen();
 
@@ -223,9 +238,22 @@ void setup() {
 
 
 void loop() {
-  vTaskDelay(5);
-  M5.Lcd.setCursor(0, 0);
+  vTaskDelay(delay_in_loop);
   M5.update();
+
+
+  // LCD輝度状態によってBRTの文字と色変更
+  M5.Lcd.setCursor(145, 16*14);
+  if (BtnB_lcd_ck == true) {
+   M5.Lcd.setTextColor(color_brt, color_lcd);
+  } else if (BtnB_lcd_ck == false) {
+   M5.Lcd.setTextColor(color_text, color_lcd);
+  }
+  M5.Display.printf("BRT");
+  M5.Lcd.setTextColor(color_text, color_lcd);
+
+  M5.Lcd.setCursor(0, 0);
+
 
   auto now_time = time(nullptr);
   auto now_time_local = localtime(&now_time);
@@ -252,26 +280,39 @@ void loop() {
     // get_state = get_detail.state;
 
     // BtnA ちょっと長押しでWi-Fi・NTPサーバ接続開始
-    if (M5.BtnA.pressedFor(500)) {
+    if (M5.BtnA.wasHold()) {
       connect();
       start_time_local_sec = now_time_local_sec;
     }
 
-    // BtnB or タッチでデシマル表示/非表示
-    if (M5.BtnB.wasClicked() || get_detail.wasClicked()) {
-      if (BtnB_ck == false) {
-        BtnB_ck = true;
+    // タッチでデシマル表示/非表示
+    if (get_detail.wasClicked()) {
+      if (BtnB_dec_ck == false) {
+        BtnB_dec_ck = true;
         start_time_local_sec = now_time_local_sec;
-      } else if (BtnB_ck == true) {
-        BtnB_ck = false;
+      } else if (BtnB_dec_ck == true) {
+        BtnB_dec_ck = false;
         start_time_local_sec = now_time_local_sec;
         // BtnBで呼び出したデシマル表示を塗り潰して無理やり非表示
         M5.Display.fillRect(0, 0, 60, 222, color_lcd);
       }
     }
 
+    // BtnB ちょっと長押しでLCD輝度MAX(brightness値<->MAX)
+    if (M5.BtnB.wasHold()) {
+      if (BtnB_lcd_ck == false) {
+        BtnB_lcd_ck = true;
+        M5.Lcd.setBrightness(255);
+        start_time_local_sec = now_time_local_sec;
+      } else if (BtnB_lcd_ck == true) {
+        BtnB_lcd_ck = false;
+        M5.Lcd.setBrightness(brightness);
+        start_time_local_sec = now_time_local_sec;
+      }
+    }
+
     // BtnC ちょっと長押しで起動オフ
-    if (M5.BtnC.pressedFor(500)) {
+    if (M5.BtnC.wasHold()) {
       poweroffTask();
     }
   //
@@ -290,7 +331,7 @@ void loop() {
 
 
   // デシマル表示出力
-    if (BtnB_ck == true) {
+    if (BtnB_dec_ck == true) {
       M5.Lcd.setCursor(7, defy-6);
       M5.Display.printf("%04d", year);
       M5.Lcd.setCursor(7, defy-6+22);
@@ -407,14 +448,14 @@ void loop() {
 
 
   // バッテリ残量表示
-  // 100-60 緑
-  //  59-20 黄
+  // 100-50 緑
+  //  49-20 黄
   //  19- 0 赤
   int battery_level = M5.Power.getBatteryLevel();
   M5.Lcd.setCursor(0, 16*14);
-  if      (battery_level <= 100 && battery_level >  60) { M5.Lcd.setTextColor(color_bt_good, color_lcd); }
-  else if (battery_level <=  60 && battery_level >  20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
-  else if (battery_level <=  20                       ) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
+  if      (battery_level <= 100 && battery_level > 50) { M5.Lcd.setTextColor(color_bt_good, color_lcd); }
+  else if (battery_level <=  50 && battery_level > 20) { M5.Lcd.setTextColor(color_bt_hmm, color_lcd); }
+  else if (battery_level <=  20                      ) { M5.Lcd.setTextColor(color_bt_danger, color_lcd); }
   M5.Display.printf("%03d", battery_level);
   M5.Lcd.setTextColor(color_text, color_lcd);
 }
